@@ -26,3 +26,6 @@ $ yarn start:dev
 # production mode
 $ yarn start:prod
 ```
+
+## Docs Api
+http://localhost:3001/docs

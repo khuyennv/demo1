@@ -1,0 +1,28 @@
+version: "2"
+services:
+    fjob-main:
+        container_name: fjob_main
+        build: .
+        environment:
+            - NODE_ENV=development
+            - LOG_LEVEL=debug
+            - PORT=3000
+            - DATABASE_CONNECTION=mysql
+            - DATABASE_HOST=mysql
+            - DATABASE_PORT=3306
+            - DATABASE_USERNAME=api
+            - DATABASE_PASSWORD=api
+            - DATABASE_DB_NAME=main
+            - API_PREFIX=v1
+            - RABBITMQ_URI=amqp://zeta_queue:zeta_queue@rabbitmq:5672
+            - REDIS_URI=redis://redis:6379/8
+
+        user: "1000:1000"
+        volumes:
+            - .:/app
+        networks:
+            - zeta_common
+
+networks:
+    zeta_common:
+        external: true

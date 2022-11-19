@@ -1,0 +1,9 @@
+version: "2"
+services:
+    fjob-main:
+        container_name: fjob_main
+        environment:
+            - NODE_ENV=development        
+        command: yarn test
+        ports:
+            - "3000:3000"

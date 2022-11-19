@@ -1,0 +1,32 @@
+.container {
+	box-sizing: border-box;
+	margin: 30px auto;
+	padding: 30px;
+	width: 500px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	background: #eee;
+}
+
+.select {
+	width: 100%;
+}
+
+.select option {
+	padding: 10px;
+	border-bottom: 1px solid #eee;
+}
+.color {
+	padding: 6px 30px;
+	margin: 10px;
+	background: orange;
+	display: inline-block;
+	border-radius: 100px;
+}
+
+.centered {
+	display: "block";
+	margin: "auto";
+}

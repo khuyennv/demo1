@@ -1,7 +1,4 @@
-import React, {
-	useEffect,
-	useState,
-} from 'react';
+import React, { useEffect } from 'react';
 
 import { AxiosResponse } from 'axios';
 
@@ -12,303 +9,306 @@ import {
 } from '@material-ui/core';
 
 import request from '../utils/request';
+import { useStateWithPromise } from './SetStateWithPromise';
 
 type EmailType = {
-  id: number;
-  mailTo: string;
-  subject: string;
-  completed: string;
-  status: number;
+	id: number;
+	mailTo: string;
+	subject: string;
+	completed: string;
+	status: number;
+	content: string;
 };
 
 type EmailsType = {
-  pending: EmailType[];
-  accepted: EmailType[];
+	pending: EmailType[];
+	accepted: EmailType[];
 };
 
 const DemoComponent = () => {
-  const [emails, setEmails] = useState<EmailsType>({
-    pending: [],
-    accepted: [],
-  });
-  const [pendingSelected, setPendingSelected] = useState<EmailType[]>();
-  const [acceptSelected, setAcceptSelected] = useState<EmailType[]>();
+	const [emails, setEmails] = useStateWithPromise<EmailsType>({
+		pending: [],
+		accepted: [],
+	});
+	const [pendingSelected, setPendingSelected] = useStateWithPromise<EmailType | null>(null);
+	const [acceptSelected, setAcceptSelected] = useStateWithPromise<EmailType | null>(null);
+	const [textAreaValue, setTextAreaValue] = useStateWithPromise<string>("");
 
-  // init
-  const init = () => {
-    setPendingSelected([]);
-    setAcceptSelected([]);
-    setEmails({
-      pending: [],
-      accepted: [],
-    });
-  };
+	// init
+	const init = async () => {
+		await setAcceptSelected(null)
+		await setPendingSelected(null)
+		await setEmails({
+			pending: [],
+			accepted: [],
+		});
 
-  // Add mail to list mail
-  const add = (addEmails: { pending: EmailType[]; accepted: EmailType[] }) => {
-    setEmails({
-      pending: [...emails.pending, ...addEmails.pending],
-      accepted: [...emails.accepted, ...addEmails.accepted],
-    });
-  };
+		return;
+	};
 
-  /**
-   * Call api get email
-   */
-  const getAllEmails = (): Promise<AxiosResponse<EmailsType>> =>
-    request.get(`/emails`);
+	/**
+	 * Call api get email
+	 */
+	const getAllEmails = (): Promise<AxiosResponse<EmailsType>> =>
+		request.get(`/emails`);
 
-  /**
-   * Call api get email
-   */
-  const updateEmails = (data: EmailsType): Promise<AxiosResponse<EmailsType>> =>
-    request.post(`/emails`, data);
+	/**
+	 * Call api get email
+	 */
+	const updateEmails = (data: EmailsType): Promise<AxiosResponse<EmailsType>> =>
+		request.post(`/emails`, data);
 
-  /**
-   * Move left to right
-   */
-  const moveRight = () => {
-    if (pendingSelected && pendingSelected!.length === 0) {
-      alert("Please choose one item.");
-    }
+	/**
+	 * Move left to right
+	 */
+	const moveRight = async () => {
+		if (!pendingSelected) {
+			alert("Please choose one item.");
+			return;
+		}
 
-    // Remove left
-    const emailTos = pendingSelected
-      ? pendingSelected?.map((e) => e.mailTo)
-      : [];
+		const emailName = pendingSelected!.mailTo
 
-    const pending = emails.pending.filter(
-      (email) => !emailTos.includes(email.mailTo)
-    );
+		const pending = emails.pending.filter(
+			(email) => email.mailTo !== emailName
+		);
 
-    const accepted = emails.accepted;
-    accepted.push(...pendingSelected!);
+		const accepted = emails.accepted;
+		accepted.push(pendingSelected!)
 
-    // add right
-    const data = {
-      pending: [...pending],
-      accepted: [...accepted],
-    };
+		await setEmails({
+			pending: [...pending],
+			accepted: [...accepted],
+		});
 
-    setEmails(data);
+		await setPendingSelected(null)
 
-    setPendingSelected([]);
+		return;
+	};
 
-    console.log("moveRight", JSON.stringify(pendingSelected), data);
-  };
+	/**
+	 * Move left to left
+	 */
+	const moveLeft = async () => {
+		if (!acceptSelected) {
+			alert("Please choose one item.");
+			return;
+		}
+		const emailName = acceptSelected!.mailTo
 
-  /**
-   * Move left to left
-   */
-  const moveLeft = () => {
-    if (acceptSelected && acceptSelected!.length === 0) {
-      alert("Please choose one item.");
-    }
+		const pending = emails.pending;
+		const accepted = emails.accepted.filter(
+			(email) => email.mailTo !== emailName
+		)
 
-    // Remove left
-    const emailTos = acceptSelected ? acceptSelected?.map((e) => e.mailTo) : [];
+		pending.push(acceptSelected!);
 
-    const pending = emails.pending;
+		await setEmails({
+			pending: [...pending],
+			accepted: [...accepted],
+		});
 
-    const accepted = emails.accepted.filter(
-      (email) => !emailTos.includes(email.mailTo)
-    );
-    pending.push(...acceptSelected!);
+		await setAcceptSelected(null)
 
-    // add right
-    const data = {
-      pending: [...pending],
-      accepted: [...accepted],
-    };
+		return;
+	};
 
-    setEmails(data);
+	/**
+	 * Update data
+	 */
+	const updateData = () => {
+		updateEmails(emails)
+			.then((result) => {
+				parseResult(result)
+			})
+			.catch((e) => {
+				alert("Update failed!");
+				console.log(e);
+			});
+	};
 
-    setAcceptSelected([]);
+	/**
+	 * Parse data from call api 
+	 */
+	const parseResult = (result: AxiosResponse<EmailsType, any>) => {
+		result.data.pending = result.data.pending.map((email) => {
+			email.status = 0;
 
-    console.log("moveRight", JSON.stringify(acceptSelected), data);
-  };
+			return email;
+		});
+		result.data.accepted = result.data.accepted.map((email) => {
+			email.status = 1;
 
-  /**
-   * Update data
-   */
-  const updateData = () => {
-    updateEmails(emails)
-      .then((result) => {
-        alert("Update successful");
-      })
-      .catch((e) => {
-        alert("Update failed!");
-        console.log(e);
-      });
-  };
+			return email;
+		});
 
-  // Effect
-  useEffect(() => {
-    console.log(
-      "useEffect has been called! =>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",
-      emails
-    );
-  }, [emails.pending, emails.accepted]);
+		setEmails(result.data);
 
-  useEffect(() => {
-    init();
+		return;
+	}
 
-    getAllEmails()
-      .then((result) => {
-        result.data.pending = result.data.pending.map((email) => {
-          email.status = 0;
-          return email;
-        });
-        result.data.accepted = result.data.accepted.map((email) => {
-          email.status = 1;
-          return email;
-        });
+	const onSubmit = () => {
+		let result = "no, email to, subject, content \n"
+		let index = 1
+		emails.accepted.forEach(email => {
+			result += `${index}, ${email.mailTo}, ${email.subject}, ${email.subject} \n`;
+			index++
+		})
 
-        add(result.data);
-      })
-      .catch((e) => {
-        console.log(e);
-      });
+		setTextAreaValue(result)
+	}
 
-    console.log("useEffect has been called first!");
-  }, []);
+	/**
+	 * useEffect
+	 */
+	useEffect(() => {
+		delay(200)
+		console.log("log")
+		getAllEmails().then((result) => {
+			result.data.pending = result.data.pending.map((email) => {
+				email.status = 0;
 
-  /**
-   * Handler change action
-   */
-  const onChangeHandler = (
-    event: React.ChangeEvent<HTMLSelectElement>,
-    type: string
-  ) => {
-    console.log("onchange ->>>>>>>>>>>>>>>>>>>>>>>");
+				return email;
+			});
+			result.data.accepted = result.data.accepted.map((email) => {
+				email.status = 1;
 
-    const selectedOptions = event.currentTarget.selectedOptions;
+				return email;
+			});
 
-    const allMailTo: string[] = [];
-    for (let i = 0; i < selectedOptions.length; i++) {
-      allMailTo.push(selectedOptions[i].value);
-    }
+			setEmails(result.data);
+		}).catch((e) => {
+			console.log(e);
+		});
+	}, []);
 
-    if (type === "pending") {
-      const newEmails = emails.pending.filter((email) =>
-        allMailTo.includes(email.mailTo)
-      );
-      console.log(newEmails, allMailTo);
-      setPendingSelected(newEmails);
 
-      return;
-    }
+	/**
+	 * Handler change action
+	 */
+	const onChangeHandler = (
+		event: React.ChangeEvent<HTMLSelectElement>,
+		type: string
+	) => {
+		const selectedOptions = event.currentTarget.selectedOptions;
 
-    const newEmails = emails.accepted.filter((email) =>
-      allMailTo.includes(email.mailTo)
-    );
+		let mailName: string;
+		for (let i = 0; i < selectedOptions.length; i++) {
+			mailName = selectedOptions[i].value
+		}
 
-    setAcceptSelected(newEmails);
-  };
+		let emailSelected: EmailType | undefined
 
-  /**
-   * Delay x ms
-   */
-  const delay = (ms: number) => {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  };
+		if (type === "pending") {
+			emailSelected = emails.pending.find((email) => email.mailTo === mailName);
+			emailSelected && setPendingSelected(emailSelected!);
+		} else {
+			emailSelected = emails.accepted.find((email) => email.mailTo === mailName);
+			emailSelected && setAcceptSelected(emailSelected!);
+		}
+	};
 
-  return (
-    <Grid container style={{ border: 1, padding: 40 }} justifyContent="center">
-      <Grid item xs={5}>
-        <select
-          multiple
-          size={5}
-          onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
-            onChangeHandler(event, "pending");
-          }}
-          onClick={(event: React.MouseEvent<HTMLSelectElement>) => {
-            if (event.detail === 2) {
-              delay(500);
-              moveRight();
-            }
-          }}
-          id="pendingEmails"
-          className="select"
-        >
-          {emails.pending &&
-            emails.pending.map((email) => {
-              return <option value={email.mailTo}>{email.subject}</option>;
-            })}
-        </select>
+	/**
+	 * Delay x ms
+	 */
+	const delay = (ms: number) => {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	};
 
-        {/* Display the selected values */}
-        {pendingSelected &&
-          pendingSelected.map((email) => (
-            <span className="color">
-              {email.subject}({email.mailTo})
-            </span>
-          ))}
-      </Grid>
-      <Grid item xs={2} spacing={0} justifyContent="center">
-        <Box textAlign="center">
-          <Button
-            variant="outlined"
-            style={{ margin: "auto", display: "block" }}
-            onClick={moveRight}
-          >
-            {" "}
-            {">"}
-          </Button>
-          <br />
-          <Button
-            variant="outlined"
-            style={{ margin: "auto", display: "block" }}
-            onClick={moveLeft}
-          >
-            {" "}
-            {"<"}
-          </Button>
-          <br />
-          <Button
-            variant="outlined"
-            style={{ margin: "auto", display: "block" }}
-            onClick={updateData}
-          >
-            {" "}
-            {"Submit"}
-          </Button>
-        </Box>
-      </Grid>
-      <Grid item xs={5}>
-        <select
-          multiple
-          size={5}
-          onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
-            onChangeHandler(event, "accept");
-          }}
-          onClick={(event: React.MouseEvent<HTMLSelectElement>) => {
-            if (event.detail === 2) {
-              delay(500);
-              moveLeft();
-            }
-          }}
-          className="select"
-          id="acceptedEmails"
-        >
-          {emails.accepted &&
-            emails.accepted.map((email) => {
-              return <option value={email.mailTo}>{email.subject}</option>;
-            })}
-        </select>
-
-        {/* Display the selected values */}
-        {acceptSelected &&
-          acceptSelected.map((email) => (
-            <span className="color">
-              {email.subject}({email.mailTo})
-            </span>
-          ))}
-
-        {/* <span className="color">{JSON.stringify(emails)}</span> */}
-      </Grid>
-    </Grid>
-  );
+	return (
+		<><Grid container style={{ border: 1, padding: 40 }}>
+			<Grid item xs={5}>
+				<select
+					size={5}
+					onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
+						onChangeHandler(event, "pending");
+					}}
+					onClick={(event: React.MouseEvent<HTMLSelectElement>) => {
+						if (event.detail === 2) {
+							moveRight().then(() => {
+								updateData();
+							});
+						}
+					}}
+					id="pendingEmails"
+					className="select"
+				>
+					{emails.pending &&
+						emails.pending.map((email) => {
+							return <option value={email.mailTo} key={email.mailTo}>{email.subject}</option>;
+						})}
+				</select>
+			</Grid>
+			<Grid item xs={2}>
+				<Box textAlign="center">
+					<Button
+						variant="outlined"
+						style={{ margin: "auto", display: "block" }}
+						onClick={() => {
+							moveRight().then(() => {
+								updateData();
+							});
+						}}
+					>
+						{">"}
+					</Button>
+					<br />
+					<Button
+						variant="outlined"
+						style={{ margin: "auto", display: "block" }}
+						onClick={() => {
+							moveLeft().then(() => {
+								updateData();
+							});
+						}}
+					>
+						{"<"}
+					</Button>
+					<br />
+					<Button
+						variant="outlined"
+						style={{ margin: "auto", display: "block" }}
+						onClick={onSubmit}
+					>
+						{"Submit"}
+					</Button>
+				</Box>
+			</Grid>
+			<Grid item xs={5}>
+				<select
+					size={5}
+					onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
+						onChangeHandler(event, "accept");
+					}}
+					onClick={(event: React.MouseEvent<HTMLSelectElement>) => {
+						if (event.detail === 2) {
+							delay(500);
+							// moveLeft();
+							moveLeft().then(() => {
+								updateData();
+							});
+						}
+					}}
+					className="select"
+					id="acceptedEmails"
+				>
+					{emails.accepted &&
+						emails.accepted.map((email) => {
+							return <option value={email.mailTo} key={email.mailTo}>{email.subject}</option>;
+						})}
+				</select>
+			</Grid>
+		</Grid>
+			<Grid container style={{ border: 1, padding: 40 }}>
+				<Grid item xs={12}>
+					<textarea
+						value={textAreaValue}
+						style={{ width: "100%", height: 300 }}
+						readOnly={true}
+					/>
+				</Grid>
+			</Grid></>
+	);
 };
 
 export default DemoComponent;
